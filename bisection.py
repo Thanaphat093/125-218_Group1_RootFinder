@@ -1,20 +1,17 @@
 import pandas as pd
 from polynomial import evaluate_poly
+from models import MethodResult, compute_true_error
 
-def solve_bisection(coeffs, xl, xr, tol, max_iter, stop_criterion):
-    """
-    ระเบียบวิธีแบ่งครึ่งช่วง (Bisection Method)
-    """
+def solve_bisection(coeffs: list[float], xl: float, xr: float, tol: float, max_iter: int, stop_criterion: str) -> MethodResult:
     fl = evaluate_poly(coeffs, xl)
     fr = evaluate_poly(coeffs, xr)
 
-    # ตรวจสอบเงื่อนไขช่วงคร่อมราก
     if fl * fr > 0:
-        return None, None, "ข้อผิดพลาด: ช่วงเริ่มต้นไม่คร่อมราก (f(XL) · f(XR) > 0) กรุณาเปลี่ยนช่วง [XL, XR] ใหม่"
+        return MethodResult("Bisection", None, 0, pd.DataFrame(), "ช่วงไม่คร่อมราก (f(XL)·f(XR) > 0)", False)
     if fl == 0:
-        return xl, pd.DataFrame(), "พบค่ารากที่ขอบซ้าย XL ทันที"
+        return MethodResult("Bisection", xl, 0, pd.DataFrame(), "พบค่ารากที่ขอบซ้าย XL ทันที", True, 0.0)
     if fr == 0:
-        return xr, pd.DataFrame(), "พบค่ารากที่ขอบขวา XR ทันที"
+        return MethodResult("Bisection", xr, 0, pd.DataFrame(), "พบค่ารากที่ขอบขวา XR ทันที", True, 0.0)
 
     rows = []
     xm_old = xl
@@ -23,37 +20,27 @@ def solve_bisection(coeffs, xl, xr, tol, max_iter, stop_criterion):
         xm = (xl + xr) / 2.0
         fm = evaluate_poly(coeffs, xm)
 
-        # คำนวณค่าความคลาดเคลื่อนตามเกณฑ์หยุดที่เลือก
         if stop_criterion == "|f(x)| < ε":
             error = abs(fm)
         elif stop_criterion == "|x_i+1 - x_i| < ε":
             error = abs(xm - xm_old) if i > 1 else abs(xr - xl) / 2.0
-        else:  # "|x_i+1 - x_i| / |x_i+1| * 100 < ε"
+        else:
             error = (abs(xm - xm_old) / abs(xm) * 100.0) if (i > 1 and xm != 0) else 100.0
 
         rows.append({
-            "รอบที่": i,
-            "XL": xl,
-            "XR": xr,
-            "XM": xm,
-            "f(XL)": fl,
-            "f(XR)": fr,
-            "f(XM)": fm,
-            "ε": error
+            "รอบที่": i, "XL": xl, "XR": xr, "XM": xm,
+            "f(XL)": fl, "f(XR)": fr, "f(XM)": fm, "ε": error
         })
 
-        # ตรวจสอบเกณฑ์หยุด
         if fm == 0 or (i > 1 and error < tol) or (stop_criterion == "|f(x)| < ε" and error < tol):
-            return xm, pd.DataFrame(rows), f"ลู่เข้าสู่คำตอบใน {i} รอบ"
+            df = pd.DataFrame(rows)
+            return MethodResult("Bisection", xm, i, df, f"ลู่เข้าใน {i} รอบ", True, compute_true_error(coeffs, xm))
 
-        # ปรับช่วงใหม่
         if fl * fm < 0:
-            xr = xm
-            fr = fm
+            xr, fr = xm, fm
         else:
-            xl = xm
-            fl = fm
-
+            xl, fl = xm, fm
         xm_old = xm
 
-    return xm, pd.DataFrame(rows), f"เตือน: ไม่ลู่เข้าภายในจำนวนรอบสูงสุด ({max_iter} รอบ)"
+    df = pd.DataFrame(rows)
+    return MethodResult("Bisection", xm, max_iter, df, f"ไม่ลู่เข้าภายใน {max_iter} รอบ", False, compute_true_error(coeffs, xm))

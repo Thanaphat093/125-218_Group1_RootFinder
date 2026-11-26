@@ -1,8 +1,4 @@
-def format_polynomial(coeffs):
-    """
-    แปลงลิสต์สัมประสิทธิ์ [a_n, a_{n-1}, ..., a_0] ให้เป็นข้อความสมการที่อ่านง่าย
-    เช่น [1, -2, -1, -3] -> "x³ - 2x² - x - 3"
-    """
+def format_polynomial(coeffs: list[float]) -> str:
     degree = len(coeffs) - 1
     terms = []
     superscripts = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
@@ -14,20 +10,13 @@ def format_polynomial(coeffs):
         sign = "-" if c < 0 else "+"
         abs_c = abs(c)
 
-        # จัดรูปแบบตัวเลขสัมประสิทธิ์ (ตัด .0 ทิ้งถ้าเป็นจำนวนเต็ม)
         c_str = f"{int(abs_c)}" if abs_c.is_integer() else f"{abs_c:g}"
         if c_str == "1" and power > 0:
             c_str = ""
 
-        # จัดรูปแบบตัวแปร x และเลขชี้กำลัง
-        if power == 0:
-            var_str = ""
-        elif power == 1:
-            var_str = "x"
-        else:
-            var_str = f"x{str(power).translate(superscripts)}"
-
+        var_str = "" if power == 0 else ("x" if power == 1 else f"x{str(power).translate(superscripts)}")
         term = f"{c_str}{var_str}"
+
         if not terms:
             terms.append(f"-{term}" if sign == "-" else term)
         else:
@@ -36,18 +25,14 @@ def format_polynomial(coeffs):
     return "".join(terms) if terms else "0"
 
 
-def evaluate_poly(coeffs, x):
-    """คำนวณค่า f(x) ด้วยวิธี Horner's Method (แม่นยำและรวดเร็ว)"""
+def evaluate_poly(coeffs: list[float], x: float) -> float:
     result = 0.0
     for c in coeffs:
         result = result * x + c
     return result
 
 
-def derivative_coeffs(coeffs):
-    """
-    หาสัมประสิทธิ์ของอนุพันธ์ f'(x) ตามกฎ d/dx (a_k * x^k) = k * a_k * x^(k-1)
-    """
+def derivative_coeffs(coeffs: list[float]) -> list[float]:
     degree = len(coeffs) - 1
     if degree <= 0:
         return [0.0]

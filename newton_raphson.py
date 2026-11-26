@@ -1,10 +1,8 @@
 import pandas as pd
 from polynomial import evaluate_poly, derivative_coeffs
+from models import MethodResult, compute_true_error
 
-def solve_newton_raphson(coeffs, x0, tol, max_iter, stop_criterion):
-    """
-    ระเบียบวิธีนิวตัน-ราฟสัน (Newton-Raphson Method)
-    """
+def solve_newton_raphson(coeffs: list[float], x0: float, tol: float, max_iter: int, stop_criterion: str) -> MethodResult:
     d_coeffs = derivative_coeffs(coeffs)
     xi = float(x0)
     rows = []
@@ -13,9 +11,8 @@ def solve_newton_raphson(coeffs, x0, tol, max_iter, stop_criterion):
         f_xi = evaluate_poly(coeffs, xi)
         df_xi = evaluate_poly(d_coeffs, xi)
 
-        # ดักจับกรณีอนุพันธ์เป็นศูนย์
         if abs(df_xi) < 1e-14:
-            return None, pd.DataFrame(rows), f"ข้อผิดพลาด: อนุพันธ์ f'(x) = 0 ที่รอบที่ {i} (x = {xi}) ไม่สามารถหารต่อได้"
+            return MethodResult("Newton-Raphson", None, i, pd.DataFrame(rows), f"อนุพันธ์ f'(x) = 0 ที่รอบที่ {i} (x = {xi})", False)
 
         x_next = xi - (f_xi / df_xi)
         f_next = evaluate_poly(coeffs, x_next)
@@ -24,21 +21,19 @@ def solve_newton_raphson(coeffs, x0, tol, max_iter, stop_criterion):
             error = abs(f_next)
         elif stop_criterion == "|x_i+1 - x_i| < ε":
             error = abs(x_next - xi)
-        else:  # "|x_i+1 - x_i| / |x_i+1| * 100 < ε"
+        else:
             error = (abs(x_next - xi) / abs(x_next) * 100.0) if x_next != 0 else 100.0
 
         rows.append({
-            "รอบที่": i,
-            "x_i": xi,
-            "f(x_i)": f_xi,
-            "f'(x_i)": df_xi,
-            "x_i+1": x_next,
-            "ε": error
+            "รอบที่": i, "x_i": xi, "f(x_i)": f_xi,
+            "f'(x_i)": df_xi, "x_i+1": x_next, "ε": error
         })
 
         if f_next == 0 or error < tol:
-            return x_next, pd.DataFrame(rows), f"ลู่เข้าสู่คำตอบใน {i} รอบ"
+            df = pd.DataFrame(rows)
+            return MethodResult("Newton-Raphson", x_next, i, df, f"ลู่เข้าใน {i} รอบ", True, compute_true_error(coeffs, x_next))
 
         xi = x_next
 
-    return xi, pd.DataFrame(rows), f"เตือน: ไม่ลู่เข้าภายในจำนวนรอบสูงสุด ({max_iter} รอบ) (อาจเกิดการวนเป็นวัฏจักรหรือลู่ออก)"
+    df = pd.DataFrame(rows)
+    return MethodResult("Newton-Raphson", xi, max_iter, df, f"ไม่ลู่เข้าภายใน {max_iter} รอบ (อาจวนเป็นวัฏจักร)", False, compute_true_error(coeffs, xi))
